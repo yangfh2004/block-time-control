@@ -6,6 +6,7 @@ Fanghao Yang
 """
 from enum import Enum
 from pandas import Timestamp
+from copy import copy
 import numpy as np
 
 
@@ -41,6 +42,7 @@ class SimpleAvgAdjust:
         self._adjust_time_interval = adjust_interval.seconds()
         self._block_time_target = target.seconds()
         self._block_count_target = self._adjust_time_interval / target.seconds()
+        self._block_time = copy(self._block_time_target)
         self._prev_timestamp = None
         self._total_block_count = 0
         self._difficulty = self.INIT_DIFFICULTY
@@ -53,8 +55,11 @@ class SimpleAvgAdjust:
             # reach block adjustment count.
             actual_interval_sec = (timestamp - self._prev_timestamp) / np.timedelta64(1, 's')
             # compare between actual interval with targeted interval
-            actual_block_time = actual_interval_sec / self._total_block_count
-            self._difficulty = self._difficulty * self._block_time_target / actual_block_time
+            excess_block_count = self._total_block_count - self._block_count_target
+            # update actual block time.
+            self._block_time = (actual_interval_sec - excess_block_count * self._block_time) / self._block_count_target
+            # adjust difficulty
+            self._difficulty *= self._block_time_target / self._block_time
             # update block count.
             self._total_block_count -= self._block_count_target
             self._prev_timestamp = timestamp

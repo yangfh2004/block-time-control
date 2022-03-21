@@ -44,7 +44,7 @@ class MiningSimulator:
         ax.legend(lines, labels, loc=0)
         return ax
 
-    def run(self):
+    def run(self, compute_error=True):
         """Run mining simulator with data."""
         sim_blk_cnt = []
         sim_difficulty = []
@@ -73,4 +73,13 @@ class MiningSimulator:
         self.data.plot(x='time', y=['SimBlkCnt', 'BlkCnt'])
         plt.figure()
         self.data.plot(x='time', y=['DiffSim', 'DiffLast'])
+        if compute_error:
+            self.data['BlkCntError'] = (self.data['SimBlkCnt'] - self.data['BlkCnt']) / self.data['BlkCnt']
+            print(f"The mean error of block count is {self.data['BlkCntError'].mean()}")
+            plt.figure()
+            self.data['BlkCntError'].hist(bins=20, alpha=0.5)
+            self.data['DiffError'] = (self.data['DiffSim'] - self.data['DiffLast']) / self.data['DiffLast']
+            print(f"The mean error of difficulty is {self.data['DiffError'].mean()}")
+            plt.figure()
+            self.data['DiffError'].hist(bins=20, alpha=0.5)
         plt.show()
