@@ -1,7 +1,8 @@
 from pathlib import Path
-from pandas import to_datetime, read_csv
+from pandas import read_csv
 from simulator.miner import Miner
 from simulator.algorithm import TimeInterval, TimeUnit
+from math import sqrt
 import matplotlib.pyplot as plt
 from pandas.plotting._matplotlib.style import get_standard_colors
 
@@ -13,7 +14,7 @@ class MiningSimulator:
     def __init__(self,hash_data: Path, miner: Miner):
         ext = hash_data.suffix
         if ext == '.csv':
-            self.data = read_csv(hash_data)
+            self.data = read_csv(hash_data, parse_dates=True, index_col=0)
         else:
             raise FileExistsError("Data file must be csv files!")
         self.miner = miner
@@ -44,11 +45,11 @@ class MiningSimulator:
         return ax
 
     def run(self):
+        """Run simulation thru all mining hash rate data"""
         sim_blk_cnt = []
         sim_difficulty = []
         sim_block_time = []
-        for _, data in self.data.iterrows():
-            timestamp = to_datetime(data['time'])
+        for timestamp, data in self.data.iterrows():
             hash_rate = data['HashRate']
             blk_cnt = self.miner.generate_blocks(hash_rate, timestamp)
             sim_blk_cnt.append(blk_cnt)
@@ -59,40 +60,52 @@ class MiningSimulator:
         self.data['SimBlockTime'] = sim_block_time
 
     def calibrate(self, compute_error=True):
-        """Calibrate mining simulator with daily data."""
+        """Calibrate mining simulator with historical mining data."""
         self.run()
         plt.figure()
-        self.data.plot(x='time', y=['SimBlkCnt', 'BlkCnt'],
+        self.data.plot(y=['SimBlkCnt', 'BlkCnt'],
                        title="Actual & Simulated Daily Block Count")
         plt.figure()
-        self.data.plot(x='time', y=['DiffSim', 'DiffLast'],
+        self.data.plot(y=['DiffSim', 'DiffLast'],
                        title="Actual & Simulated Daily Average Mining Difficulty", logy=True)
         if compute_error:
-            self.data['BlkCntError'] = (self.data['SimBlkCnt'] - self.data['BlkCnt']) / self.data['BlkCnt']
-            print(f"The mean error of block count is {self.data['BlkCntError'].abs().mean()}")
+            self.data['BlkCntError'] = (self.data['SimBlkCnt'] - self.data['BlkCnt'])
+            blk_se = self.data['BlkCntError']**2
+            print(f"The MSE of daily block generation rate is {sqrt(blk_se.mean()):.2f} blocks.")
             plt.figure()
-            self.data.plot(x='time', y=['BlkCntError'])
+            self.data.plot(y=['BlkCntError'])
             self.data['DiffError'] = (self.data['DiffSim'] - self.data['DiffLast']) / self.data['DiffLast']
-            print(f"The mean error of difficulty is {self.data['DiffError'].abs().mean()}")
+            diff_se = self.data['DiffError']**2
+            print(f"The MSE of difficulty is {sqrt(diff_se.mean()) * 100:.2f}%")
             plt.figure()
-            self.data.plot(x='time', y=['DiffError'])
+            self.data.plot(y=['DiffError'])
         plt.show()
 
-    def simulate(self):
+    def simulate(self, start=None, end=None):
         """Simulate mining daily dynamics."""
         self.run()
+        if start:
+            if end:
+                self.data = self.data[start:end]
+            else:
+                self.data = self.data[start:]
         plt.figure()
         self._plot_multi(cols=['SimBlockTime', 'HashRate'], title='Simulated Block Time and Real Hash Rate', logy=True)
         plt.figure()
-        self.data.plot(x='time', y='DiffSim', title='Simulated Mining Difficulty')
+        self.data.plot(y='DiffSim', title='Simulated Mining Difficulty')
         day = TimeInterval(1, TimeUnit.Day)
         target_daily_blk_cnt = day.seconds() // self.miner.block_time_target
         self.data['BlkCntShift'] = self.data['SimBlkCnt'] - target_daily_blk_cnt
         plt.figure()
-        self.data.plot(x='time', y='BlkCntShift', title='Daily Block Generation Shift')
-        self.data['BlockTimeShift'] = (self.data['SimBlockTime'] - self.miner.block_time_target) \
-            / self.miner.block_time_target
-        self.data.plot(x='time', y='BlockTimeShift', ylim=(-1.0, 1.0), title='Daily Average Block Time Shift')
-        print(f"Average daily block time error is "
-              f"{self.data['BlockTimeShift'].abs().mean() * self.miner.block_time_target} seconds")
+        self.data.plot(y='BlkCntShift', title='Daily Block Generation Shift')
+        self.data['BlockTimeShift'] = (self.data['SimBlockTime'] - self.miner.block_time_target)
+        self.data.plot(y='BlockTimeShift', title='Daily Average Block Time Shift')
+        blk_time_se = self.data['BlockTimeShift']**2
+        # window_size = self.miner.block_count_target // target_daily_blk_cnt
+        # roll_mean_bt = self.data['BlockTimeShift'].rolling(window_size).mean()
+        # plt.figure()
+        # roll_mean_bt.plot()
+        print(f"The average simulated block time is {self.data['SimBlockTime'].mean():.2f} seconds with "
+              f"{self.data['BlockTimeShift'].mean():.2f} seconds of shift.")
+        print(f"The MSE of against targeted block time is {sqrt(blk_time_se.mean()):.2f} seconds")
         plt.show()

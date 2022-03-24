@@ -64,6 +64,10 @@ class Miner(ABC):
         return self._algorithm.block_time_target
 
     @property
+    def block_count_target(self) -> int:
+        return int(self._algorithm.block_count_target)
+
+    @property
     def hash_rate(self) -> float:
         return self._hash_rate
 

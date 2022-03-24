@@ -9,12 +9,13 @@ only using hash rate data and its corresponding timestamp (e.g. daily average ha
 Using this framework to simulate the daily block generation and daily average mining difficulty against 
 the actual historical data as shown below.
 
-The mean error of daily block count is 0.83%.
+The MSE of block count is 2.70 blocks daily.
 ![plot](./charts/bitcoin_blk_sim.png)
 
-The mean error of daily average difficulty is 0.97%.
+The MSE of difficulty is 2.33%
 ![plot](./charts/bitcoin_diff_sim.png)
 
 ## Data Source
-The Bitcoin hash rate and difficulty data is from:
+The daily hash rate is the sum of hash rate of all major mining pools.
+* The Bitcoin hash rate of mining pools and difficulty data is from:
 https://coinmetrics.io

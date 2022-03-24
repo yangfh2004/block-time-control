@@ -41,7 +41,7 @@ class AdjustAlgorithm(ABC):
         # all time value are in seconds.
         self._adjust_time_interval = adjust_interval.seconds()
         self.block_time_target = target.seconds()
-        self.block_count_target = self._adjust_time_interval / target.seconds()
+        self.block_count_target = self._adjust_time_interval // target.seconds()
         # this is the measured average block time in an adjustment time interval (NOT current block time!).
         self._measured_block_time = copy(self.block_time_target)
         # the timestamp of last difficulty adjustment.
