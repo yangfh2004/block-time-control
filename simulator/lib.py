@@ -101,11 +101,10 @@ class MiningSimulator:
         self.data['BlockTimeShift'] = (self.data['SimBlockTime'] - self.miner.block_time_target)
         self.data.plot(y='BlockTimeShift', title='Daily Average Block Time Shift')
         blk_time_se = self.data['BlockTimeShift']**2
-        # window_size = self.miner.block_count_target // target_daily_blk_cnt
-        # roll_mean_bt = self.data['BlockTimeShift'].rolling(window_size).mean()
-        # plt.figure()
-        # roll_mean_bt.plot()
-        print(f"The average simulated block time is {self.data['SimBlockTime'].mean():.2f} seconds with "
-              f"{self.data['BlockTimeShift'].mean():.2f} seconds of shift.")
+        print(f"The average simulated block time is {self.data['SimBlockTime'].mean():.2f} seconds. ")
+        window_size = self.miner.block_count_target // target_daily_blk_cnt
+        roll_mean_bt = self.data['BlockTimeShift'].rolling(window_size).mean()
+        print(f"The rolling average of {window_size} day window has "
+              f"{roll_mean_bt.mean():.2f} seconds of shift.")
         print(f"The MSE of against targeted block time is {sqrt(blk_time_se.mean()):.2f} seconds")
         plt.show()

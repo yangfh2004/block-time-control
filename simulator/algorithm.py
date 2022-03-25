@@ -100,6 +100,7 @@ class SimpleBitAdjust(AdjustAlgorithm):
 
     def _adjust_difficulty(self):
         # adjust difficulty
-        adjustment = max(min(round(log2(self.block_time_target / self._measured_block_time)), self._adjust_bit_range),
+        adjustment = max(min(round(log2((self.block_time_target / self._measured_block_time)**2)),
+                             self._adjust_bit_range),
                          -self._adjust_bit_range)
         self._difficulty += adjustment
