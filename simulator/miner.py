@@ -39,7 +39,7 @@ class Miner(ABC):
         predicted_blk_cnt = time_interval // int(self.block_time)
         if self._is_diff_adjustment(predicted_blk_cnt):
             # get the residual block count before the difficulty adjustment.
-            residual_blk_cnt = self._algorithm.block_count_target - self._algorithm.total_block_count
+            residual_blk_cnt = max(0, self._algorithm.block_count_target - self._algorithm.total_block_count)
             residual_blk_time = residual_blk_cnt * int(self.block_time)
             excess_blk_time = time_interval - residual_blk_time
             # excess_blk_time = (predicted_blk_cnt - residual_blk_cnt) * self._day.seconds() // predicted_blk_cnt
@@ -49,7 +49,7 @@ class Miner(ABC):
             # predict block count after difficulty adjustment.
             new_blk_cnt = excess_blk_time // int(self.block_time)
             predicted_blk_cnt = new_blk_cnt + residual_blk_cnt
-            assert (predicted_blk_cnt > 0)
+            assert (predicted_blk_cnt >= 0)
 
         self.difficulty = self._algorithm(predicted_blk_cnt, self._timestamp, excess_blk_time)
         return predicted_blk_cnt

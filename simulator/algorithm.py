@@ -40,8 +40,8 @@ class AdjustAlgorithm(ABC):
                  target: TimeInterval):
         # all time value are in seconds.
         self._adjust_time_interval = adjust_interval.seconds()
-        self.block_time_target = target.seconds()
-        self.block_count_target = self._adjust_time_interval // target.seconds()
+        self._block_time_target = target.seconds()
+        self._block_count_target = self._adjust_time_interval // target.seconds()
         # this is the measured average block time in an adjustment time interval (NOT current block time!).
         self._measured_block_time = copy(self.block_time_target)
         # the timestamp of last difficulty adjustment.
@@ -54,16 +54,28 @@ class AdjustAlgorithm(ABC):
         if self._adjust_timestamp is None:
             self._adjust_timestamp = timestamp
         # check if reach block adjustment count.
-        elif self.total_block_count >= self.block_count_target:
+        elif self.total_block_count >= self._block_count_target:
             assert (excess_seconds >= 0)
             actual_interval_sec = (timestamp - self._adjust_timestamp) / np.timedelta64(1, 's') - excess_seconds
             # update actual average block time.
-            self._measured_block_time = actual_interval_sec / self.block_count_target
+            self._measured_block_time = actual_interval_sec / self._block_count_target
             self._adjust_difficulty()
             # update block count.
-            self.total_block_count -= self.block_count_target
+            self.total_block_count -= self._block_count_target
             self._adjust_timestamp = timestamp - Timedelta(seconds=excess_seconds)
         return self._difficulty
+
+    @property
+    def adjust_time_interval(self):
+        return self._adjust_time_interval
+
+    @property
+    def block_time_target(self):
+        return self._block_time_target
+
+    @property
+    def block_count_target(self):
+        return self._block_count_target
 
     @property
     @abstractmethod
@@ -92,8 +104,9 @@ class SimpleAvgAdjust(AdjustAlgorithm):
 class SimpleBitAdjust(AdjustAlgorithm):
     INIT_DIFFICULTY = 59
 
-    def __init__(self, adjust_interval: TimeInterval = BITCOIN_INTERVAL, adjust_range: int = 3,
-                 target: TimeInterval = BITCOIN_BLOCK_TIME):
+    def __init__(self, adjust_interval: TimeInterval = BITCOIN_INTERVAL,
+                 target: TimeInterval = BITCOIN_BLOCK_TIME,
+                 adjust_range: int = 3,):
         # all time value are in seconds.
         super().__init__(adjust_interval, target)
         self._adjust_bit_range = adjust_range
@@ -104,3 +117,33 @@ class SimpleBitAdjust(AdjustAlgorithm):
                              self._adjust_bit_range),
                          -self._adjust_bit_range)
         self._difficulty += adjustment
+
+
+class PIDBitAdjust(AdjustAlgorithm):
+    INIT_DIFFICULTY = 59
+
+    def __init__(self, adjust_interval: TimeInterval = BITCOIN_INTERVAL,
+                 target: TimeInterval = BITCOIN_BLOCK_TIME,
+                 adjust_range: int = 3,
+                 p: float = 1.63, i: float = 0.002, d: float = 0.03):
+        # all time value are in seconds.
+        super().__init__(adjust_interval, target)
+        self._adjust_bit_range = adjust_range
+        self._proportional_gain = p
+        self._integral_gain = i
+        self._derivative_gain = d
+        self._prev_error = 0.0
+        self._accumulated_error = 0.0
+
+    def _adjust_difficulty(self):
+        error = self.block_time_target - self._measured_block_time
+        p_term = self._proportional_gain * error
+        i_term = self._integral_gain * self._accumulated_error
+        d_term = self._derivative_gain * (error - self._prev_error)
+        # only use P and D term
+        total_gain = p_term + d_term + i_term
+        adjustment = round(log2((1 + total_gain/self.block_time_target)**2))
+        adjustment = max(min(adjustment, self._adjust_bit_range), -self._adjust_bit_range)
+        self._difficulty += adjustment
+        self._prev_error = error
+        self._accumulated_error += error
