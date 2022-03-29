@@ -87,8 +87,10 @@ class MiningSimulator:
         if start:
             if end:
                 self.data = self.data[start:end]
+                print(f"The simulation evaluates results from {start} to {end}.")
             else:
                 self.data = self.data[start:]
+                print(f"The simulation evaluates results from {start}.")
         plt.figure()
         self._plot_multi(cols=['SimBlockTime', 'HashRate'], title='Simulated Block Time and Real Hash Rate', logy=True)
         plt.figure()
@@ -101,10 +103,10 @@ class MiningSimulator:
         self.data['BlockTimeShift'] = (self.data['SimBlockTime'] - self.miner.block_time_target)
         self.data.plot(y='BlockTimeShift', title='Daily Average Block Time Shift')
         blk_time_se = self.data['BlockTimeShift']**2
-        print(f"The average simulated block time is {self.data['SimBlockTime'].mean():.2f} seconds. ")
+        print(f"The average simulated block time is {self.data['SimBlockTime'].mean():.2f} seconds.")
         window_size = self.miner.block_count_target // target_daily_blk_cnt
         roll_mean_bt = self.data['BlockTimeShift'].rolling(window_size).mean()
         print(f"The rolling average of {window_size} day window has "
               f"{roll_mean_bt.mean():.2f} seconds of shift.")
-        print(f"The MSE of against targeted block time is {sqrt(blk_time_se.mean()):.2f} seconds")
+        print(f"The MSE of measured block time is {sqrt(blk_time_se.mean()):.2f} seconds.")
         plt.show()

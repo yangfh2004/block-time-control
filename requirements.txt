@@ -6,3 +6,4 @@ six==1.16.0
 matplotlib~=3.5.1
 click~=8.0.4
 tqdm~=4.63.1
+filterpy~=1.4.5
